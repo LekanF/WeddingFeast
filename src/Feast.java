@@ -3,16 +3,12 @@ import ilog.cplex.*;
 
 public class Feast {
 
-//	public static void main(String[] args) {
-//		// TODO Auto-generated method stub
-//
-//	}
 	
 	public static void solveMe() {
 		
 		int numberDishes = 4; // number of dishes
 		int numberIngredients = 26;
-		
+/*		
 		double[] dish1_ingredients = { 1, 1, 1/2, 1/2, 3/4, 2, 1/3 }; // serves 8 people
 		double[] dish2_ingredients = { 1, 1, 1, 2, 1, 1, 8, 8}; // serves 8 people
 		double[] dish3_ingredients = { 9.5, 1.5, 7, 1, 3/4, 1.25, 1/2, 1/4 }; // serves 6 people
@@ -23,13 +19,15 @@ public class Feast {
 		double[] amount_dish2 = {0 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 1, 1, 8, 8  };
 		double[] amount_dish3 = {9.5, 1.5, 7, 1, 0 ,3/4, 0, 0, 1.25, 1/2, 0, 1/4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 		double[] amount_dish4 = {0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 1/2, 0, 0, 3, 0, 3, 0, 1, 1, 0, 0, 0, 0, 0, 0 }; 
-		
+*/		
 		// Amount of ingredients using double array
 		double[][] amount = {{0, 0, 0, 0, 1, 0, 1.0/2, 1.0/2, 0, 0 , 3.0/4, 0, 2, 1.0/3, 0, 1, 0 ,1 ,0 ,0 ,0 ,0 ,0 ,0, 0, 0 },
 				{0 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 1, 1, 8, 8  },
 				{9.5, 1.5, 7, 1, 0 ,3.0/4, 0, 0, 1.25, 1.0/2, 0, 1.0/4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 				{0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 1.0/2, 0, 0, 3, 0, 3, 0, 1, 1, 0, 0, 0, 0, 0, 0 }};
 		
+		
+		/* Real Data Below.. not in use now
 		// Distribution of guests - -guests range from 87 - 113
 		double[] percentGuestsDistribution = {0.01, 0.01, 0.01, 0.02, 0.02, 0,03, 0.04, 0.04, 0.05, 0.06, 0.06, 0.07, 0.07, 0.07, 0.07, 0.06, 0.06, 0.05, 0.05, 0.04, 0.03, 0.02};
 		double[] guests = {87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
@@ -37,8 +35,9 @@ public class Feast {
 		// Distribution of vegetarians - Vegetarians range from 1% to 11%
 		double[] percentVegetarianDistribution = { 0.03, 0.16, 0.21, 0.19, 0.15, 0.11, 0.07, 0.04, 0.02, 0.01, 0.01};
 		double[] vegetarians = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-		int scenarios = percentGuestsDistribution.length * percentVegetarianDistribution.length;
-		
+		*/
+
+		// Sampole Data in Use
 		double[] guests1 = {870, 880, 890, 900, 910};
 		double[] percentGuestsDistribution1 = {0.1, 0.2, 0.3, 0.2, 0.2};
 		
@@ -55,13 +54,14 @@ public class Feast {
 		 * Burger buns, Plum tomatoes
 		 * */
 		// Price for ingredients
-		double butterCost = 4.77; double mushroomCost = 2.99; double chicBrothCost = 2.67; double virginOliveOilCost = 8.28;
+		/*double butterCost = 4.77; double mushroomCost = 2.99; double chicBrothCost = 2.67; double virginOliveOilCost = 8.28;
 		double pecansCost = 10.37; double leekCost = 4.99; double sugarCost = 2.79; double dryMustardCost = 6.74;
 		double arborioRiceCost = 3.97; double whiteWineCost = 16.65; double VegetableOilCost = 5.67; double parmesanCheeseCost = 3.88;
 		double poppySeedCost = 3.97; double redWineCost = 10.67; double potatoesCost = 5.49; double spinachCost = 6.99;
 		double truffleOilCost = 37.97; double strawberriesCost = 4.45; double pepperCost = 3.06; double saltCost = 1.59;
 		double groundBeefCost = 1.56; double mayonnaiseCost = 1.03; double ketchupCost = 0.73; double sweetPickleCost = 1.0;
 		double burgerBunsCost = 0.59; double plumTomatoesCost = 3.49;
+		*/
 		
 		double[] price = {4.77, 2.99, 2.67, 8.28, 10.37, 4.99, 2.79, 6.74, 3.97, 16.65, 5.67, 3.88, 3.97, 10.67, 5.49, 6.99, 37.97, 4.45,
 				3.06, 1.59, 1.56, 1.03, 0.73, 1.0, 0.59, 3.49};
