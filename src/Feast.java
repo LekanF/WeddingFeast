@@ -148,7 +148,7 @@ public class Feast {
 			
 
 			// Vegetarians 
-/*			for (int j = 0; j < numberDishes; j++) {
+			for (int j = 0; j < numberDishes; j++) {
 				double sum = 0;
 				expr.clear();
 				if (j != 1 || j != 0) { // It is a non vegetarian food i.e., j = 1
@@ -179,10 +179,10 @@ public class Feast {
 					cplex.addEq(expr, sum);
 				}
 			}
-			*/
+			
 			
 			// combined
-						for (int d = 0; d < numberDishes; d++) {
+/*						for (int d = 0; d < numberDishes; d++) {
 							expr.clear(); double sum = 0;
 							if (d != 2 || d != 3) { // It is a vegetarian food
 								for (int g = 0; g < guests1.length; g++) {
@@ -208,7 +208,7 @@ public class Feast {
 //								cplex.addEq(expr, sum);
 							}
 						}
-			
+			*/
 			
 			
 			// Model
