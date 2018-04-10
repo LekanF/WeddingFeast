@@ -67,13 +67,13 @@ public class Wedding {
 					Prepare[i] = cplex.numVar(1, Double.MAX_VALUE);
 	         }
 	         
-//	         IloNumVar[] Surplus = new IloNumVar[nDishes]; // Surplus plates prepared per dish 
+	         // Surplus plates prepared per dish 
 	         IloNumVar[] Surplus = new IloNumVar[scenarios];
 	         for (int i = 0; i < scenarios; i++) {
 					Surplus[i] = cplex.numVar(0, Double.MAX_VALUE);
 	         }
 	         
-//	         IloNumVar[] Shortage = new IloNumVar[nDishes]; // Shortage of plates prepared 
+	         // Shortage of plates prepared 
 	         IloNumVar[] Shortage = new IloNumVar[scenarios];
 	         for (int i = 0; i < scenarios; i++) {
 					Shortage[i] = cplex.numVar(0, Double.MAX_VALUE);
@@ -118,12 +118,9 @@ public class Wedding {
 	 		
 	        for (int i = 0 ; i < nDishes; i++) {
 	        		ObjNumDishes.addTerm(manHourCost[i], Prepare[i]);
-	        		ObjNumDishes.addTerm(cost[i], Prepare[i]);
-//	        		ObjSurplus.addTerm(costSurplus[i], Surplus[i]);
-//	        		ObjShortage.addTerm(costShortage[i], Shortage[i]);	        		
+	        		ObjNumDishes.addTerm(cost[i], Prepare[i]);	        		
 	        }
 	        
-	        IloLinearNumExpr expr = cplex.linearNumExpr();
 	        
 	        // For each scenario, i.e. number of guests
 	        
@@ -137,11 +134,8 @@ public class Wedding {
 	        			ObjShortage.addTerm(Shortage[j], coefficientShortage);
 	        		}
 	        }
-	        
-	        
-//	        		cplex.addMinimize(cplex.sum(ObjNumDishes, cplex.prod(pGuestDist, ObjSurplus), cplex.prod(pGuestDist, ObjShortage)));
-	        		
-	        		cplex.addMinimize(cplex.sum(ObjNumDishes, ObjSurplus, ObjShortage));
+	        	        		
+	        	cplex.addMinimize(cplex.sum(ObjNumDishes, ObjSurplus, ObjShortage));
 	        		
 	        
 	        
