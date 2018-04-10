@@ -29,7 +29,7 @@ public class Feast {
 		
 		/* Real Data Below.. not in use now
 		// Distribution of guests - -guests range from 87 - 113
-		double[] percentGuestsDistribution = {0.01, 0.01, 0.01, 0.02, 0.02, 0,03, 0.04, 0.04, 0.05, 0.06, 0.06, 0.07, 0.07, 0.07, 0.07, 0.06, 0.06, 0.05, 0.05, 0.04, 0.03, 0.02};
+		double[] percentGuestsDistribution = {0.01, 0.01, 0.01, 0.02, 0.02, 0,03, 0.04, 0.04, 0.05, 0.06, 0.06, 0.07, 0.07, 0.07, 0.07, 0.06, 0.06, 0.05, 0.05, 0.04, 0.03, 0.02, 0.02, 0.01, 0.01, 0.01, 0.01 };
 		double[] guests = {87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
 				111, 112, 113};
 		// Distribution of vegetarians - Vegetarians range from 1% to 11%
@@ -161,7 +161,7 @@ public class Feast {
 //							cplex.addEq(expr, percentGuestsDistribution[g] * guests[g] * percentVegetarianDistribution[v] * vegetarians[v]);
 						}
 					}
-					cplex.addEq(expr, sum);
+					cplex.addEq(expr, sum );
 				}
 			}
 			
@@ -176,10 +176,17 @@ public class Feast {
 							sum += numNonVeggie;
 						}
 					}
-					cplex.addEq(expr, sum);
+					cplex.addEq(expr, sum );
 				}
 			}
 			
+			// Budget constraint. Money that can be spent has to be limited or what you can buy.
+			for (int i = 0; i < numberDishes; i++) {
+				expr.clear();
+				expr.addTerm(manHourCost[i], x[i]);
+				expr.addTerm(costOfDish[i], x[i]);
+			}
+			cplex.addLe(expr, 20000);
 			
 			// combined
 /*						for (int d = 0; d < numberDishes; d++) {
