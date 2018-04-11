@@ -13,12 +13,13 @@
 import ilog.concert.*;
 import ilog.cplex.*;
 import java.io.*;
+import java.text.DecimalFormat;
 
 public class Wedding {
 
 	static int nDishes;
 	static int nIgred;
-	static int scenarios;
+	static int scenarios, scenarios2;
 	
 	static double[][] amount;
 	static double[] pGuestDist;
@@ -30,11 +31,18 @@ public class Wedding {
 	static double[] HoursPerDish;
 	static double wage;
 	
+	static double[] tableCost;
+	static int[] tableSize;
+	static double penaltyTable;
+	
+	static int typesTable;
+	static DecimalFormat df = new DecimalFormat("#0.0");
+	
 	static void readData(String fileName) throws java.io.IOException, InputDataReader.InputDataReaderException {
 		
 		InputDataReader reader = new InputDataReader(fileName);
 		
-		amount		=	reader.readDoubleArrayArray();
+		amount		=	reader.readDoubleArrayArray(); // amount of ingredients per dish
 		pGuestDist 	=	reader.readDoubleArray();
 		guests		=	reader.readDoubleArray();
 		pVegDist		=	reader.readDoubleArray();
@@ -44,9 +52,15 @@ public class Wedding {
 		HoursPerDish	=	reader.readDoubleArray();
 		wage			=	reader.readDouble();	
 		
+		tableCost	=	reader.readDoubleArray();
+		tableSize	=	reader.readIntArray();
+		penaltyTable	=	reader.readDouble();
+		
 		nDishes = HoursPerDish.length;
 		nIgred = price.length;
 		scenarios  = guests.length;
+		scenarios2 = veg.length;
+		typesTable = tableSize.length; // 
 	}
 	
 	public static void main(String[] args) {
@@ -63,23 +77,65 @@ public class Wedding {
 
 	         IloNumVar[] Prepare = new IloNumVar[nDishes]; // Number of plates to prepare per dish
 	         
+	         
 	         for (int i = 0; i < nDishes; i++) {
-					Prepare[i] = cplex.numVar(1, Double.MAX_VALUE);
+	        	 	Prepare[i] = cplex.intVar(1, Integer.MAX_VALUE);
 	         }
 	         
-	         // Surplus plates prepared per dish 
-	         IloNumVar[] Surplus = new IloNumVar[scenarios];
+	         IloNumVar[] numTables = new IloNumVar[typesTable];	// Number of tables to be bought for each group size
+	         for (int i = 0; i < typesTable; i++) {
+	        	 	numTables[i] = cplex.intVar(0, Integer.MAX_VALUE);
+
+	         }
+	         
+//	         // Surplus plates prepared per dish 
+//	         IloNumVar[] Surplus = new IloNumVar[scenarios];
+//	        
+//	         for (int i = 0; i < scenarios; i++) {
+//					Surplus[i] = cplex.numVar(0, Double.MAX_VALUE);
+//	         }
+	         
+	         // Surplus: you have a table that is partially filled
+	         
+	         IloNumVar[] tableSurplus = new IloNumVar[scenarios];
 	         for (int i = 0; i < scenarios; i++) {
-					Surplus[i] = cplex.numVar(0, Double.MAX_VALUE);
+					tableSurplus[i] = cplex.numVar(0, Double.MAX_VALUE);
 	         }
 	         
-	         // Shortage of plates prepared 
-	         IloNumVar[] Shortage = new IloNumVar[scenarios];
+	         // Shortage: people not assigned a seat, left standing 
+	         IloNumVar[] tableShortage = new IloNumVar[scenarios];
 	         for (int i = 0; i < scenarios; i++) {
-					Shortage[i] = cplex.numVar(0, Double.MAX_VALUE);
+					tableShortage[i] = cplex.numVar(0, Double.MAX_VALUE);
 	         }
 	         
-	         	         
+	         // Surplus amount of plates prepared per dish
+	         IloNumVar[][][] dSurplus = new IloNumVar[nDishes][scenarios][scenarios2];
+	         
+	         for (int i = 0; i < nDishes; i++) {
+	        	 	for (int j = 0; j< scenarios; j++) {
+	        	 		for (int k = 0; k < scenarios2; k++) {
+
+	        	 		dSurplus[i][j][k] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 		}
+	         	}
+			}
+	         
+//	         // Shortage of plates prepared 
+//	         IloNumVar[] Shortage = new IloNumVar[scenarios];
+//	         for (int i = 0; i < scenarios; i++) {
+//					Shortage[i] = cplex.numVar(0, Double.MAX_VALUE);
+//	         }
+	         
+	         // Shortage amount of food prepared per dish
+	         IloNumVar[][][] dShortage = new IloNumVar[nDishes][scenarios][scenarios2];
+	         
+	         for (int i = 0; i < nDishes; i++) {
+	         for (int j = 0; j < scenarios; j++) {
+	        	 	for (int k = 0; k < scenarios2; k++) {
+	        	 		dShortage[i][j][k] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 	}
+	         }
+	         }
 	         
 	         // Cost of each dish
 	         double[] cost = new double[nDishes];
@@ -110,69 +166,162 @@ public class Wedding {
 	 		}
 	 		
 	 		
-	         
-	         // Objective Function
-	        IloLinearNumExpr ObjNumDishes = cplex.linearNumExpr();
-	        IloLinearNumExpr ObjSurplus = cplex.linearNumExpr();
-	        IloLinearNumExpr ObjShortage = cplex.linearNumExpr();
+	 		// Tables Objective 
+	 		IloLinearNumExpr nTables = cplex.linearNumExpr();
+	 		IloLinearNumExpr objTableSurplus = cplex.linearNumExpr();
+	 		IloLinearNumExpr objTableShortage = cplex.linearNumExpr();
+	 		
+	 		for (int i =0; i < typesTable; i++) {
+	 			nTables.addTerm(numTables[i], tableCost[i]);
+	 		}
+	 		
+	 		// for each guests scenario
+	 		for (int j = 0; j < scenarios; j++) {
+	 			double coefficient = pGuestDist[j] * penaltyTable;
+	 			
+	 			objTableSurplus.addTerm(tableSurplus[j], coefficient);
+	 			objTableShortage.addTerm(tableShortage[j], coefficient);
+	 		}
+	 		
+	       	
+	 		//  Dish Objective 
+	        IloLinearNumExpr objNumDishes = cplex.linearNumExpr();
+	        IloLinearNumExpr objSurplus = cplex.linearNumExpr();
+	        IloLinearNumExpr objShortage = cplex.linearNumExpr();
 	 		
 	        for (int i = 0 ; i < nDishes; i++) {
-	        		ObjNumDishes.addTerm(manHourCost[i], Prepare[i]);
-	        		ObjNumDishes.addTerm(cost[i], Prepare[i]);	        		
+	        		objNumDishes.addTerm(manHourCost[i], Prepare[i]);
+	        		objNumDishes.addTerm(cost[i], Prepare[i]);	        		
 	        }
 	        
-	        
-	        // For each scenario, i.e. number of guests
-	        
-	        for (int i = 0; i < nDishes; i++) {
-	        		
-	        		for (int j = 0; j < scenarios; j++) {
-	        			double coefficientSurplus = pGuestDist[j] * costSurplus[i];
-	        			double coefficientShortage = pGuestDist[j] * costShortage[i];
-	        			
-	        			ObjSurplus.addTerm(Surplus[j], coefficientSurplus);
-	        			ObjShortage.addTerm(Shortage[j], coefficientShortage);
-	        		}
-	        }
-	        	        		
-	        	cplex.addMinimize(cplex.sum(ObjNumDishes, ObjSurplus, ObjShortage));
-	        		
-	        
-	        
-	        
-	        // Constraints
-	        // For each guests, surplus - shortage = number of plates - guests
+	        double coefficientSurplus = 0; 
+			double coefficientShortage = 0;
+		     for (int i= 0 ; i < nDishes; i++) {   
+		        for (int j = 0; j < guests.length; j++) {
+		        		for (int k = 0; k < pVegDist.length; k++) {	    
+		        			
+		        			if (i == 0 || i == 1) {
+		        				 coefficientSurplus = pGuestDist[j] * pVegDist[k] * costSurplus[i];
+		        				 coefficientShortage = pGuestDist[j] * pVegDist[k] * costSurplus[i];
+		        			}
+		        			else {
+			        			 coefficientSurplus = pGuestDist[j] * (1-pVegDist[k]) * costSurplus[i];
+			        			 coefficientShortage = pGuestDist[j] * (1-pVegDist[k]) * costSurplus[i];
+		        			}
+		        			objSurplus.addTerm(dSurplus[i][j][k], coefficientSurplus);
+		        			objShortage.addTerm(dShortage[i][j][k], coefficientShortage);
+		        		}
+		        }
+		     } 
+		     
 
-	        for (int i = 0; i < guests.length; i++) {
-	        		for(int j = 0; j < nDishes; j++) {
-	        			
-	        			// Surplus[j] - Shortage[j] = Prepare[j] - guests[i]
+			cplex.addMinimize(cplex.sum(objNumDishes, nTables, objSurplus, objShortage, objTableSurplus, objTableShortage));
 
-	        			cplex.addEq(cplex.diff(Surplus[i], Shortage[i]), cplex.diff(Prepare[j], guests[i]));
-
-
-	        			// Note that here, we can specify veggies and normal guests dishes. o.e., diesh 1 and 2 for Veggies and 3 and 4 for Normal
-	        		}
-	        }
-	        
+		     
+		 	//  Vegetarian and Non-vegetarian Constraints 
+		 	
+		 	for (int i = 0; i < nDishes; i++) {
+		 		for(int j = 0; j < scenarios; j++) {
+		 			for(int k = 0; k < scenarios2; k++) {
+		 				
+		 				double numVegetarians = guests[j] * veg[k];
+		 				double numNonVeg = guests[j] - numVegetarians;
+		 				
+		 				
+		 				if ( i == 2 || i == 3 ) { // it is a non-vegetarian food
+		 					cplex.addEq(cplex.diff(dSurplus[i][j][k], dShortage[i][j][k]), cplex.diff(Prepare[i], numVegetarians));
+		 				}
+		 				else{ // It is vegetarian food
+		 					cplex.addEq(cplex.diff(dSurplus[i][j][k], dShortage[i][j][k]), cplex.diff(Prepare[i], numNonVeg));
+		 				}
+		 			}
+		 		}
+		 	}
+		 	
+		 	// Tables Constraint
+		 	
+		 	 IloLinearNumExpr expr = cplex.linearNumExpr();
+		        for (int i = 0; i < typesTable; i++) {
+		        		expr.addTerm(numTables[i], tableSize[i]); 
+		        }
+		        for (int i = 0; i < typesTable; i++) {
+		        		for (int j = 0; j < scenarios; j++) {
+		        			cplex.addEq(cplex.diff(tableSurplus[j], tableShortage[j]), cplex.diff(expr, guests[j]));
+		        		}		        		
+		        }
+	 	
+		 	
+		 	// Fridge Capacity constraint
+		 	
+		 	IloLinearNumExpr mayo = cplex.linearNumExpr();
+		 	IloLinearNumExpr ketchup = cplex.linearNumExpr();
+		 	IloLinearNumExpr beef = cplex.linearNumExpr();
+		 	for(int i = 0; i < nDishes; i++) {
+		 		mayo.addTerm(amount[i][22], Prepare[i]);
+		 		ketchup.addTerm(amount[i][23], Prepare[i]);
+		 		beef.addTerm(amount[i][21], Prepare[i]);
+		 	}
+		 	
+		 	
+		 	cplex.addLe(cplex.sum(beef, cplex.sum(mayo,ketchup)), 1);
+		 	
 	        // Solve
-	        
+			
 	        if (cplex.solve()) {
+	        	FileWriter results = new FileWriter("weddingResults.txt", false);
+	        		results.write("Solution Status: " + cplex.getStatus() + "\n");
+	        		results.write("Total Cost = " + cplex.getObjValue() + "\n");
+	        		results.write("\tDType  \tGScenario  \tVScenario \tTableType \t  NumTables \t TSurplus \tTShortage \t NumPlates \tSurplus \t\tShortage\n");
+	        		
 	        		System.out.println("Solution Status: " + cplex.getStatus());
 	        		System.out.println();
 	        		System.out.println("Total Cost = " + cplex.getObjValue());
 	        		
 	        		System.out.println();
-	        		System.out.println("\ti \ts \t Prepare \tSurplus \t\tShortage");
+//	        		System.out.println("\ti \ts \tc \t Prepare \tSurplus \t\tShortage");
+	        		System.out.println("\ti  \ts \tc \tj \t  NumTables \t Table Surplus \t Table Shortage \t Prepare \tSurplus \t\tShortage" );
 	        		for (int i= 0; i < nDishes; i++) {
+	        			for (int j = 0; j < typesTable; j++) {
 	        			for (int s = 0; s < scenarios; s++) {
+	        				for (int c = 0; c < scenarios2; c++) {
 	        				System.out.println("\t" + (i+1) + 
-	        					"\t"	 + (s+1) +
-	        					"\t " + cplex.getValue(Prepare[i]) +
-	        					"\t\t" + cplex.getValue(Surplus[s]) + 
-	        					"\t\t" + cplex.getValue(Shortage[s]));
+	        					"\t"	 + (s+1) + 
+	        					"\t"	 + (c+1) +
+	        					"\t" + (j+1) + 
+	        					"\t\t" + cplex.getValue(numTables[j]) +
+	        					"\t" + cplex.getValue(tableSurplus[s]) +
+	        					"\t" + cplex.getValue(tableShortage[s]) +
+	        					
+	        					"\t " + cplex.getValue(Prepare[i]) +	        					
+	        					"\t\t" + cplex.getValue(dSurplus[i][s][c]) + 
+	        					"\t\t" + cplex.getValue(dShortage[i][s][c]));
+	        				
+	        				results.write("\t" + (i+1) + 
+	        					"\t\t\t"	 + (s+1) + 
+	        					"\t\t\t"	 + (c+1) +
+	        					"\t\t\t" + (j+1) + 
+	        					
+	        					"\t\t\t" + cplex.getValue(numTables[j]) +
+	        					"\t\t\t" + cplex.getValue(tableSurplus[s]) +
+	        					"\t\t\t" + cplex.getValue(tableShortage[s]) +
+	        					
+	        					"\t\t\t" + cplex.getValue(Prepare[i]) +        					
+	        					"\t\t\t" + df.format(cplex.getValue(dSurplus[i][s][c])) + 
+	        					"\t\t\t" + df.format(cplex.getValue(dShortage[i][s][c])) + "\n");
+	        				}
 	        			}
 	        		}
+	        }
+	        	
+	        		System.out.println("Total Cost = " + cplex.getObjValue());
+	        		for (int i = 0; i < nDishes; i++) {
+	        			System.out.println( "x[" + (i+1) + "]: " + cplex.getValue(Prepare[i]));
+	        		}
+	        		
+	        		for (int j = 0; j < typesTable; j++) {
+	        			System.out.println((j+1) +": " + cplex.getValue(numTables[j]) );
+	        		}
+	        		results.close();
 	        }
 	        else {
 	        	System.out.println("No solution found!");
