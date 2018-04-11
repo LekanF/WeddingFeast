@@ -1,12 +1,12 @@
-/** -------------------------------------------------------------------------
- * File: Wedding.java
- * Version 2
- * --------------------------------------------------------------------------
- * A project for the COMP 567 Class at McGill
- * Describes a stochastic wedding feast problem
- * Author: Olamilekan Fadahunsi
- * Co-Author: Julian Skirzynski
- * --------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
+ * File: Wedding.java														*
+ * Version 3																*
+ * ----------------------------------------------------------------------------
+ * A project for the COMP 567 Class at McGill								*
+ * Describes a stochastic wedding feast problem								*
+ * Author: Olamilekan Fadahunsi												*
+ * 																			*
+ * ----------------------------------------------------------------------------
  * 
  * */
 
@@ -21,11 +21,11 @@ public class Wedding {
 	static int nIgred;
 	static int scenarios, scenarios2;
 	
-	static double[][] amount;
-	static double[] pGuestDist;
+	static double[][] amountIngredients;
+	static double[] probGuestDist;
 	static double[] guests;
-	static double[] pVegDist;
-	static double[] veg;
+	static double[] probVegDist;
+	static double[] vegetarians;
 	
 	static double[] price;
 	static double[] HoursPerDish;
@@ -42,11 +42,11 @@ public class Wedding {
 		
 		InputDataReader reader = new InputDataReader(fileName);
 		
-		amount		=	reader.readDoubleArrayArray(); // amount of ingredients per dish
-		pGuestDist 	=	reader.readDoubleArray();
+		amountIngredients		=	reader.readDoubleArrayArray(); // amount of ingredients per dish
+		probGuestDist 	=	reader.readDoubleArray();
 		guests		=	reader.readDoubleArray();
-		pVegDist		=	reader.readDoubleArray();
-		veg			=	reader.readDoubleArray();
+		probVegDist		=	reader.readDoubleArray();
+		vegetarians			=	reader.readDoubleArray();
 		
 		price		=	reader.readDoubleArray();
 		HoursPerDish	=	reader.readDoubleArray();
@@ -59,7 +59,7 @@ public class Wedding {
 		nDishes = HoursPerDish.length;
 		nIgred = price.length;
 		scenarios  = guests.length;
-		scenarios2 = veg.length;
+		scenarios2 = vegetarians.length;
 		typesTable = tableSize.length; // 
 	}
 	
@@ -88,12 +88,6 @@ public class Wedding {
 
 	         }
 	         
-//	         // Surplus plates prepared per dish 
-//	         IloNumVar[] Surplus = new IloNumVar[scenarios];
-//	        
-//	         for (int i = 0; i < scenarios; i++) {
-//					Surplus[i] = cplex.numVar(0, Double.MAX_VALUE);
-//	         }
 	         
 	         // Surplus: you have a table that is partially filled
 	         
@@ -120,19 +114,14 @@ public class Wedding {
 	         	}
 			}
 	         
-//	         // Shortage of plates prepared 
-//	         IloNumVar[] Shortage = new IloNumVar[scenarios];
-//	         for (int i = 0; i < scenarios; i++) {
-//					Shortage[i] = cplex.numVar(0, Double.MAX_VALUE);
-//	         }
 	         
 	         // Shortage amount of food prepared per dish
-	         IloNumVar[][][] dShortage = new IloNumVar[nDishes][scenarios][scenarios2];
+	         IloNumVar[][][] shortage = new IloNumVar[nDishes][scenarios][scenarios2];
 	         
 	         for (int i = 0; i < nDishes; i++) {
 	         for (int j = 0; j < scenarios; j++) {
 	        	 	for (int k = 0; k < scenarios2; k++) {
-	        	 		dShortage[i][j][k] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 		shortage[i][j][k] = cplex.numVar(0, Double.MAX_VALUE);
 	        	 	}
 	         }
 	         }
@@ -142,7 +131,7 @@ public class Wedding {
 	         
 	         for (int i = 0; i < nDishes; i++) {
 	 			for (int j = 0; j < nIgred; j++) {
-	 				cost[i] += amount[i][j] * price[j];
+	 				cost[i] += amountIngredients[i][j] * price[j];
 	 			}
 	        }	
 	 			
@@ -177,7 +166,7 @@ public class Wedding {
 	 		
 	 		// for each guests scenario
 	 		for (int j = 0; j < scenarios; j++) {
-	 			double coefficient = pGuestDist[j] * penaltyTable;
+	 			double coefficient = probGuestDist[j] * penaltyTable;
 	 			
 	 			objTableSurplus.addTerm(tableSurplus[j], coefficient);
 	 			objTableShortage.addTerm(tableShortage[j], coefficient);
@@ -198,18 +187,18 @@ public class Wedding {
 			double coefficientShortage = 0;
 		     for (int i= 0 ; i < nDishes; i++) {   
 		        for (int j = 0; j < guests.length; j++) {
-		        		for (int k = 0; k < pVegDist.length; k++) {	    
+		        		for (int k = 0; k < probVegDist.length; k++) {	    
 		        			
 		        			if (i == 0 || i == 1) {
-		        				 coefficientSurplus = pGuestDist[j] * pVegDist[k] * costSurplus[i];
-		        				 coefficientShortage = pGuestDist[j] * pVegDist[k] * costSurplus[i];
+		        				 coefficientSurplus = probGuestDist[j] * probVegDist[k] * costSurplus[i];
+		        				 coefficientShortage = probGuestDist[j] * probVegDist[k] * costSurplus[i];
 		        			}
 		        			else {
-			        			 coefficientSurplus = pGuestDist[j] * (1-pVegDist[k]) * costSurplus[i];
-			        			 coefficientShortage = pGuestDist[j] * (1-pVegDist[k]) * costSurplus[i];
+			        			 coefficientSurplus = probGuestDist[j] * (1-probVegDist[k]) * costSurplus[i];
+			        			 coefficientShortage = probGuestDist[j] * (1-probVegDist[k]) * costSurplus[i];
 		        			}
 		        			objSurplus.addTerm(dSurplus[i][j][k], coefficientSurplus);
-		        			objShortage.addTerm(dShortage[i][j][k], coefficientShortage);
+		        			objShortage.addTerm(shortage[i][j][k], coefficientShortage);
 		        		}
 		        }
 		     } 
@@ -224,15 +213,15 @@ public class Wedding {
 		 		for(int j = 0; j < scenarios; j++) {
 		 			for(int k = 0; k < scenarios2; k++) {
 		 				
-		 				double numVegetarians = guests[j] * veg[k];
+		 				double numVegetarians = guests[j] * vegetarians[k];
 		 				double numNonVeg = guests[j] - numVegetarians;
 		 				
 		 				
 		 				if ( i == 2 || i == 3 ) { // it is a non-vegetarian food
-		 					cplex.addEq(cplex.diff(dSurplus[i][j][k], dShortage[i][j][k]), cplex.diff(Prepare[i], numVegetarians));
+		 					cplex.addEq(cplex.diff(dSurplus[i][j][k], shortage[i][j][k]), cplex.diff(Prepare[i], numVegetarians));
 		 				}
 		 				else{ // It is vegetarian food
-		 					cplex.addEq(cplex.diff(dSurplus[i][j][k], dShortage[i][j][k]), cplex.diff(Prepare[i], numNonVeg));
+		 					cplex.addEq(cplex.diff(dSurplus[i][j][k], shortage[i][j][k]), cplex.diff(Prepare[i], numNonVeg));
 		 				}
 		 			}
 		 		}
@@ -257,44 +246,31 @@ public class Wedding {
 		 	IloLinearNumExpr ketchup = cplex.linearNumExpr();
 		 	IloLinearNumExpr beef = cplex.linearNumExpr();
 		 	for(int i = 0; i < nDishes; i++) {
-		 		mayo.addTerm(amount[i][22], Prepare[i]);
-		 		ketchup.addTerm(amount[i][23], Prepare[i]);
-		 		beef.addTerm(amount[i][21], Prepare[i]);
+		 		mayo.addTerm(amountIngredients[i][22], Prepare[i]);
+		 		ketchup.addTerm(amountIngredients[i][23], Prepare[i]);
+		 		beef.addTerm(amountIngredients[i][21], Prepare[i]);
 		 	}
 		 	
 		 	
 		 	cplex.addLe(cplex.sum(beef, cplex.sum(mayo,ketchup)), 1);
 		 	
 	        // Solve
-			
+		 	
 	        if (cplex.solve()) {
 	        	FileWriter results = new FileWriter("weddingResults.txt", false);
 	        		results.write("Solution Status: " + cplex.getStatus() + "\n");
-	        		results.write("Total Cost = " + cplex.getObjValue() + "\n");
+	        		results.write("Total Cost = " + df.format(cplex.getObjValue()) + "\n");
 	        		results.write("\tDType  \tGScenario  \tVScenario \tTableType \t  NumTables \t TSurplus \tTShortage \t NumPlates \tSurplus \t\tShortage\n");
 	        		
 	        		System.out.println("Solution Status: " + cplex.getStatus());
 	        		System.out.println();
-	        		System.out.println("Total Cost = " + cplex.getObjValue());
+	        		System.out.println("Total Cost = " + df.format(cplex.getObjValue()));
 	        		
 	        		System.out.println();
-//	        		System.out.println("\ti \ts \tc \t Prepare \tSurplus \t\tShortage");
-	        		System.out.println("\ti  \ts \tc \tj \t  NumTables \t Table Surplus \t Table Shortage \t Prepare \tSurplus \t\tShortage" );
 	        		for (int i= 0; i < nDishes; i++) {
 	        			for (int j = 0; j < typesTable; j++) {
 	        			for (int s = 0; s < scenarios; s++) {
 	        				for (int c = 0; c < scenarios2; c++) {
-	        				System.out.println("\t" + (i+1) + 
-	        					"\t"	 + (s+1) + 
-	        					"\t"	 + (c+1) +
-	        					"\t" + (j+1) + 
-	        					"\t\t" + cplex.getValue(numTables[j]) +
-	        					"\t" + cplex.getValue(tableSurplus[s]) +
-	        					"\t" + cplex.getValue(tableShortage[s]) +
-	        					
-	        					"\t " + cplex.getValue(Prepare[i]) +	        					
-	        					"\t\t" + cplex.getValue(dSurplus[i][s][c]) + 
-	        					"\t\t" + cplex.getValue(dShortage[i][s][c]));
 	        				
 	        				results.write("\t" + (i+1) + 
 	        					"\t\t\t"	 + (s+1) + 
@@ -307,19 +283,22 @@ public class Wedding {
 	        					
 	        					"\t\t\t" + cplex.getValue(Prepare[i]) +        					
 	        					"\t\t\t" + df.format(cplex.getValue(dSurplus[i][s][c])) + 
-	        					"\t\t\t" + df.format(cplex.getValue(dShortage[i][s][c])) + "\n");
+	        					"\t\t\t" + df.format(cplex.getValue(shortage[i][s][c])) + "\n");
 	        				}
 	        			}
 	        		}
 	        }
 	        	
-	        		System.out.println("Total Cost = " + cplex.getObjValue());
+	        		System.out.println("Dishes Types");
 	        		for (int i = 0; i < nDishes; i++) {
+	        			
 	        			System.out.println( "x[" + (i+1) + "]: " + cplex.getValue(Prepare[i]));
 	        		}
 	        		
+	        		System.out.println();
+	        		System.out.println("Table Types");
 	        		for (int j = 0; j < typesTable; j++) {
-	        			System.out.println((j+1) +": " + cplex.getValue(numTables[j]) );
+	        			System.out.println("t[" + (j+1) +"]: " + cplex.getValue(numTables[j]) );
 	        		}
 	        		results.close();
 	        }
