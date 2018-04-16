@@ -52,7 +52,7 @@ model.penaltyMinus = Param(model.I, initialize=defInit)
 model.penaltyTable = Param(within=PositiveReals)
 
 ## a little bit different parameter, i.e. the demand for the dishes
-## and general demand (# people)
+## and general demand for the tables (# people)
 model.demand = Param(model.I, model.Omega, within=NonNegativeIntegers)
 model.demandV = Param(model.Omega, within=PositiveIntegers)
 model.demandNV = Param(model.Omega, within=PositiveIntegers)
@@ -63,7 +63,7 @@ model.fridgeIngs = Set()
 
 '''
 State model's variables x - number ofparticular dishes, y - number of 
-particular tables (w and v are for unmet demand/surplus)
+particular tables for veg/non-veg (w and v are for unmet demand/surplus)
 '''
 model.x = Var(model.I, domain=PositiveIntegers)
 model.y1 = Var(model.J, domain=NonNegativeIntegers)
@@ -76,9 +76,10 @@ model.vP2 = Var(model.Omega, domain=NonNegativeIntegers)
 model.vN2 = Var(model.Omega, domain=NonNegativeIntegers)
 
 '''
-Specify the constraints (due to giving domains for variables there
-are just two for a relationship between surplus and deficiency in 
-dishes and tables, respectively)
+Specify the constraints. Due to giving domains for variables there
+are just three for a relationship between surplus and shortage in 
+dishes and tables, respectively, the fridge capacity constraint, 
+and at least one table constraint.
 '''
 def generationRule(model, i, omega):
 	return model.wP[i, omega] - model.wN[i, omega] == model.x[i] - model.demand[i, omega]
@@ -120,168 +121,6 @@ def objectiveExpr(model):
 		+ summation(model.tableCost, model.y1) + summation(model.tableCost, model.y2) \
 		+ model.penaltyTable * sum(model.prob[omega] * (model.vP1[omega] + model.vN1[omega]) for omega in model.Omega) \
 		+ model.penaltyTable * sum(model.prob[omega] * (model.vP2[omega] + model.vN2[omega]) for omega in model.Omega)
-
-model.objective = Objective(sense=minimize, rule=objectiveExpr)
-
-## data specification is in another file modelData.dat
-
-model.penaltyMinus = Param(model.I, initialize=defInit)
-model.penaltyTable = Param(within=PositiveReals)
-
-## a little bit different parameter, i.e. the demand for dishes
-## and general demand (# people)
-model.demand = Param(model.I, model.Omega, within=NonNegativeIntegers)
-model.generalDemand = Param(model.Omega2, within=PositiveIntegers)
-## corresponding probabilities
-model.prob = Param(model.Omega, within=PositiveReals)
-model.generalProb = Param(model.Omega2, within=PositiveReals)
-
-'''
-State model's variables x - number ofparticular dishes, y - number of 
-particular tables (w and v are for unmet demand/surplus)
-'''
-model.x = Var(model.I, domain=PositiveIntegers)
-model.y = Var(model.J, domain=NonNegativeIntegers)
-model.wP = Var(model.I, model.Omega, domain=NonNegativeIntegers)
-model.wN = Var(model.I, model.Omega, domain=NonNegativeIntegers)
-model.vP = Var(model.Omega2, domain=NonNegativeIntegers)
-model.vN = Var(model.Omega2, domain=NonNegativeIntegers)
-
-'''
-Specify the constraints (due to giving domains for variables there
-are just two for a relationship between surplus and deficiency in 
-dishes and tables, respectively)
-'''
-def generationRule(model, i, omega):
-	return model.wP[i, omega] - model.wN[i, omega] == model.x[i] - model.demand[i, omega]
-
-model.wPwN = Constraint(model.I, model.Omega, rule=generationRule)
-
-def generationRule2(model, omega):
-	return model.vP[omega] - model.vN[omega] == sum(model.tableSize[j] * model.y[j] for j in model.J) - model.generalDemand[omega]
-
-model.vPvN = Constraint(model.Omega2, rule=generationRule2)
-
-'''
-Define the objective function
-'''
-def objectiveExpr(model):
-	return summation(model.manhourCost, model.x) + summation(model.dishCost, model.x) \
-		+ sum(model.prob[omega] * sum(model.penaltyPlus[i] * model.wP[i, omega] \
-		+ model.penaltyMinus[i] * model.wN[i, omega] for i in model.I) for omega in model.Omega) \
-		+ summation(model.tableCost, model.y) \
-		+ model.penaltyTable * sum(model.generalProb[omega] * (model.vP[omega] + model.vN[omega]) for omega in model.Omega2)
-
-model.objective = Objective(sense=minimize, rule=objectiveExpr)
-
-## data specification is in another file modelData.dat (which does not exist yet)
-
-model.penaltyMinus = Param(model.I, initialize=defInit)
-model.penaltyTable = Param(within=PositiveReals)
-
-## a little bit different parameter, i.e. the demand for dishes
-## and general demand (# people)
-model.demand = Param(model.I, model.Omega, within=NonNegativeIntegers)
-model.generalDemand = Param(model.Omega2, within=PositiveIntegers)
-## corresponding probabilities
-model.prob = Param(model.Omega, within=PositiveReals)
-model.generalProb = Param(model.Omega2, within=PositiveReals)
-
-'''
-State model's variables x - number ofparticular dishes, y - number of 
-particular tables (w and v are for unmet demand/surplus)
-'''
-model.x = Var(model.I, domain=PositiveIntegers)
-model.y = Var(model.J, domain=NonNegativeIntegers)
-model.wP = Var(model.I, model.Omega, domain=NonNegativeIntegers)
-model.wN = Var(model.I, model.Omega, domain=NonNegativeIntegers)
-model.vP = Var(model.Omega2, domain=NonNegativeIntegers)
-model.vN = Var(model.Omega2, domain=NonNegativeIntegers)
-
-'''
-Specify the constraints (due to giving domains for variables there
-are just two for a relationship between surplus and deficiency in 
-dishes and tables, respectively)
-'''
-def generationRule(model, i, omega):
-	return model.wP[i, omega] - model.wN[i, omega] == model.x[i] - model.demand[i, omega]
-
-model.wPwN = Constraint(model.I, model.Omega, rule=generationRule)
-
-def generationRule2(model, omega):
-	return model.vP[omega] - model.vN[omega] == sum(tableSize[j] * model.y[j] for j in model.j) - model.generalDemand[omega]
-
-model.vPvN = Constraint(model.Omega2, rule=generationRule2)
-
-'''
-Define the objective function
-'''
-def objectiveExpr(model):
-	return summation(model.manhourCost, model.x) + summation(model.dishCost, model.x) \
-		+ sum(model.prob[omega] * sum(model.penaltyPlus[i] * model.wP[i, omega] \
-		+ model.penaltyMinus[i] * model.wN[i, omega] for i in model.I) for omega in model.Omega) \
-		+ summation(model.tableCost, model.y) \
-		+ model.penaltyTable * sum(model.generalProb[omega] * (model.vP[omega] + model.vN[omega]) for omega in model.Omega2)
-
-model.objective = Objective(sense=minimize, rule=objectiveExpr)
-
-## data specification is in another file modelData.dat (which does not exist yet)
-model.tableSize = Param(model.j, within=PositiveIntegers)
-
-def surplusInit(model, i):
-	return model.dishCost[i] + model.manhourCost[i]
-
-model.penaltyPlus = Param(model.i, initialize=surplusInit)
-
-def defInit(model, i):
-	return 1.2*(model.dishCost[i] + model.manhourCost[i])
-
-model.penaltyMinus = Param(model.i, initialize=defInit)
-model.penaltyTable = Param(within=PositiveReals)
-
-## a little bit different parameter, i.e. the demand for dishes
-## and general demand (# people)
-model.demand = Param(model.i, model.omega, within=NonNegativeIntegers)
-model.generalDemand = Param(model.omega2, within=PositiveIntegers)
-## corresponding probabilities
-model.prob = Param(model.omega, within=PositiveReals)
-model.generalProb = Param(model.omega2, within=PositiveReals)
-
-'''
-State model's variables x - number ofparticular dishes, y - number of 
-particular tables (w and v are for unmet demand/surplus)
-'''
-model.x = Var(model.i, domain=PositiveIntegers)
-model.y = Var(model.j, domain=NonNegativeIntegers)
-model.wP = Var(model.i, model.omega, domain=NonNegativeIntegers)
-model.wN = Var(model.i, model.omega, domain=NonNegativeIntegers)
-model.vP = Var(model.omega2, domain=NonNegativeIntegers)
-model.vN = Var(model.omega2, domain=NonNegativeIntegers)
-
-'''
-Specify the constraints (due to giving domains for variables there
-are just two for a relationship between surplus and deficiency in 
-dishes and tables, respectively)
-'''
-def generationRule(model, i, omega):
-	return model.wP[i, omega] - model.wN[i, omega] == model.x[i] - model.demand[i, omega]
-
-model.wPwN = Constraint(model.i, model.omega, rule=generationRule)
-
-def generationRule2(model, omega):
-	return model.vP[omega] - model.vN[omega] == sum(tableSize[j] * model.y[j] for j in model.j) - model.generalDemand[omega]
-
-model.vPvN = Constraint(model.omega2, rule=generationRule2)
-
-'''
-Define the objective function
-'''
-def objectiveExpr(model):
-	return summation(model.manhourCost, model.x) + summation(model.dishCost, model.x) \
-		+ sum(model.prob[omega] * sum(model.penaltyPlus[i] * model.wP[i, omega] \
-		+ model.penaltyMinus[i] * model.wN[i, omega] for i in model.i) for omega in model.omega) \
-		+ summation(model.tableCost, model.y) \
-		+ model.penaltyTable * sum(model.generalProb[omega] * (model.vP[omega] + model.vN[omega]) for omega in omega2)
 
 model.objective = Objective(sense=minimize, rule=objectiveExpr)
 
