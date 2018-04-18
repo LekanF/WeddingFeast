@@ -36,7 +36,7 @@ public class Wedding {
 	static double penaltyTable;
 	
 	static int typesTable;
-	static DecimalFormat df = new DecimalFormat("#0.0");
+	static DecimalFormat df = new DecimalFormat("#0.0000");
 	
 	static void readData(String fileName) throws java.io.IOException, InputDataReader.InputDataReaderException {
 		
@@ -60,7 +60,7 @@ public class Wedding {
 		nIgred = price.length;
 		scenarios  = guests.length;
 		scenarios2 = vegetarians.length;
-		typesTable = tableSize.length; // 
+		typesTable = tableSize.length;  
 	}
 	
 	public static void main(String[] args) {
@@ -82,34 +82,49 @@ public class Wedding {
 	        	 	Prepare[i] = cplex.intVar(1, Integer.MAX_VALUE);
 	         }
 	         
-	         IloNumVar[] numTables = new IloNumVar[typesTable];	// Number of tables to be bought for each group size
+	         
+	         IloNumVar[] numTablesVeg = new IloNumVar[typesTable];	// Number of tables to be bought for each group size
 	         for (int i = 0; i < typesTable; i++) {
-	        	 	numTables[i] = cplex.intVar(0, Integer.MAX_VALUE);
+	        	 	numTablesVeg[i] = cplex.intVar(0, Integer.MAX_VALUE);
+
+	         }
+	         
+	         IloNumVar[] numTablesNonVeg = new IloNumVar[typesTable];	// Number of tables to be bought for each group size
+	         for (int i = 0; i < typesTable; i++) {
+	        	 	numTablesNonVeg[i] = cplex.intVar(0, Integer.MAX_VALUE);
 
 	         }
 	         
 	         
 	         // Surplus: you have a table that is partially filled
 	         
-	         IloNumVar[] tableSurplus = new IloNumVar[scenarios];
+	         IloNumVar[][] tableSurplus = new IloNumVar[scenarios][scenarios2];
+	         IloNumVar[][] tableSurplusN = new IloNumVar[scenarios][scenarios2];
 	         for (int i = 0; i < scenarios; i++) {
-					tableSurplus[i] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 	for(int j = 0; j < scenarios2; j++) {
+					tableSurplus[i][j] = cplex.numVar(0, Double.MAX_VALUE);
+					tableSurplusN[i][j] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 	}
 	         }
 	         
 	         // Shortage: people not assigned a seat, left standing 
-	         IloNumVar[] tableShortage = new IloNumVar[scenarios];
+	         IloNumVar[][] tableShortage = new IloNumVar[scenarios][scenarios2];
+	         IloNumVar[][] tableShortageN = new IloNumVar[scenarios][scenarios2];
 	         for (int i = 0; i < scenarios; i++) {
-					tableShortage[i] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 	for (int j = 0; j < scenarios2; j++) {
+					tableShortage[i][j] = cplex.numVar(0, Double.MAX_VALUE);
+					tableShortageN[i][j] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 	}
 	         }
 	         
 	         // Surplus amount of plates prepared per dish
-	         IloNumVar[][][] dSurplus = new IloNumVar[nDishes][scenarios][scenarios2];
+	         IloNumVar[][][] surplus = new IloNumVar[nDishes][scenarios][scenarios2];
 	         
 	         for (int i = 0; i < nDishes; i++) {
 	        	 	for (int j = 0; j< scenarios; j++) {
 	        	 		for (int k = 0; k < scenarios2; k++) {
 
-	        	 		dSurplus[i][j][k] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 		surplus[i][j][k] = cplex.numVar(0, Double.MAX_VALUE);
 	        	 		}
 	         	}
 			}
@@ -119,27 +134,32 @@ public class Wedding {
 	         IloNumVar[][][] shortage = new IloNumVar[nDishes][scenarios][scenarios2];
 	         
 	         for (int i = 0; i < nDishes; i++) {
-	         for (int j = 0; j < scenarios; j++) {
-	        	 	for (int k = 0; k < scenarios2; k++) {
-	        	 		shortage[i][j][k] = cplex.numVar(0, Double.MAX_VALUE);
+	        	 	for (int j = 0; j < scenarios; j++) {
+	        	 		for (int k = 0; k < scenarios2; k++) {
+	        	 			shortage[i][j][k] = cplex.numVar(0, Double.MAX_VALUE);
+
+	        	 		}
 	        	 	}
-	         }
 	         }
 	         
 	         // Cost of each dish
 	         double[] cost = new double[nDishes];
 	         
 	         for (int i = 0; i < nDishes; i++) {
+	        	 	cost[i] = 0;
 	 			for (int j = 0; j < nIgred; j++) {
 	 				cost[i] += amountIngredients[i][j] * price[j];
 	 			}
+	 			System.out.println("Cost [" + (i+1) + "]: " + cost[i]);
 	        }	
 	 			
+	         System.out.println();
 	 		// Man hours cost i.e, cost per hour of cooking a dish
 	 		double[] manHourCost = new double[nDishes]; 
 
 	 		for (int k = 0; k < HoursPerDish.length; k++) {
 	 			manHourCost[k] = HoursPerDish[k] * wage;
+	 			System.out.println("wage [" + (k+1) + "]: " + manHourCost[k]);
 	 		}
 	 		
 	 		double costSurplus[] = new double[nDishes];
@@ -158,88 +178,123 @@ public class Wedding {
 	 		// Tables Objective 
 	 		IloLinearNumExpr nTables = cplex.linearNumExpr();
 	 		IloLinearNumExpr objTableSurplus = cplex.linearNumExpr();
+	 		IloLinearNumExpr objTableSurplusN = cplex.linearNumExpr();
 	 		IloLinearNumExpr objTableShortage = cplex.linearNumExpr();
+	 		IloLinearNumExpr objTableShortageN = cplex.linearNumExpr();
 	 		
 	 		for (int i =0; i < typesTable; i++) {
-	 			nTables.addTerm(numTables[i], tableCost[i]);
+	 			nTables.addTerm(numTablesVeg[i], tableCost[i]);
+	 			nTables.addTerm(numTablesNonVeg[i], tableCost[i]);
 	 		}
 	 		
-	 		// for each guests scenario
+
 	 		for (int j = 0; j < scenarios; j++) {
-	 			double coefficient = probGuestDist[j] * penaltyTable;
-	 			
-	 			objTableSurplus.addTerm(tableSurplus[j], coefficient);
-	 			objTableShortage.addTerm(tableShortage[j], coefficient);
+	 			for (int k = 0; k < scenarios2; k++) {
+	 				double coefficient = probGuestDist[j] * probVegDist[k] * penaltyTable;
+	 				
+	 				objTableSurplus.addTerm(tableSurplus[j][k], coefficient);
+		 			objTableShortage.addTerm(tableShortage[j][k], coefficient);
+		 			
+		 			double coefficientN = probGuestDist[j] * (1-probVegDist[k]) * penaltyTable;
+		 			objTableSurplusN.addTerm(tableSurplusN[j][k], coefficientN);
+		 			objTableShortageN.addTerm(tableShortageN[j][k], coefficientN);
+	 			}
 	 		}
+	 		
 	 		
 	       	
 	 		//  Dish Objective 
 	        IloLinearNumExpr objNumDishes = cplex.linearNumExpr();
 	        IloLinearNumExpr objSurplus = cplex.linearNumExpr();
 	        IloLinearNumExpr objShortage = cplex.linearNumExpr();
-	 		
+	       
 	        for (int i = 0 ; i < nDishes; i++) {
 	        		objNumDishes.addTerm(manHourCost[i], Prepare[i]);
-	        		objNumDishes.addTerm(cost[i], Prepare[i]);	        		
+	        		objNumDishes.addTerm(cost[i], Prepare[i]);	        		 
 	        }
 	        
 	        double coefficientSurplus = 0; 
 			double coefficientShortage = 0;
+			
 		     for (int i= 0 ; i < nDishes; i++) {   
 		        for (int j = 0; j < guests.length; j++) {
 		        		for (int k = 0; k < probVegDist.length; k++) {	    
 		        			
-		        			if (i == 0 || i == 1) {
+
 		        				 coefficientSurplus = probGuestDist[j] * probVegDist[k] * costSurplus[i];
-		        				 coefficientShortage = probGuestDist[j] * probVegDist[k] * costSurplus[i];
-		        			}
-		        			else {
-			        			 coefficientSurplus = probGuestDist[j] * (1-probVegDist[k]) * costSurplus[i];
-			        			 coefficientShortage = probGuestDist[j] * (1-probVegDist[k]) * costSurplus[i];
-		        			}
-		        			objSurplus.addTerm(dSurplus[i][j][k], coefficientSurplus);
-		        			objShortage.addTerm(shortage[i][j][k], coefficientShortage);
+		        				 coefficientShortage = probGuestDist[j] * probVegDist[k] * costShortage[i];
+
+		        				 objSurplus.addTerm(surplus[i][j][k], coefficientSurplus);
+		        				 objShortage.addTerm(shortage[i][j][k], coefficientShortage);
+
 		        		}
 		        }
 		     } 
 		     
+			cplex.addMinimize(cplex.sum(objNumDishes, nTables, objSurplus, objShortage, objTableSurplus, objTableShortage, objTableSurplusN, objTableShortageN));
 
-			cplex.addMinimize(cplex.sum(objNumDishes, nTables, objSurplus, objShortage, objTableSurplus, objTableShortage));
 
 		     
 		 	//  Vegetarian and Non-vegetarian Constraints 
+		 	
+		 
 		 	
 		 	for (int i = 0; i < nDishes; i++) {
 		 		for(int j = 0; j < scenarios; j++) {
 		 			for(int k = 0; k < scenarios2; k++) {
 		 				
-		 				double numVegetarians = guests[j] * vegetarians[k];
+		 				double numVegetarians = Math.ceil(guests[j] * vegetarians[k]);
 		 				double numNonVeg = guests[j] - numVegetarians;
 		 				
-		 				
-		 				if ( i == 2 || i == 3 ) { // it is a non-vegetarian food
-		 					cplex.addEq(cplex.diff(dSurplus[i][j][k], shortage[i][j][k]), cplex.diff(Prepare[i], numVegetarians));
+		 				if ( i == 0 || i == 1) { // it is a vegetarian food
+		 					cplex.addEq(cplex.diff(surplus[i][j][k], shortage[i][j][k]), cplex.diff(Prepare[i], numVegetarians));
 		 				}
-		 				else{ // It is vegetarian food
-		 					cplex.addEq(cplex.diff(dSurplus[i][j][k], shortage[i][j][k]), cplex.diff(Prepare[i], numNonVeg));
+		 				else { // It is non-vegetarian food
+		 					cplex.addEq(cplex.diff(surplus[i][j][k], shortage[i][j][k]), cplex.diff(Prepare[i], numNonVeg));
 		 				}
 		 			}
 		 		}
 		 	}
 		 	
+
 		 	// Tables Constraint
 		 	
-		 	 IloLinearNumExpr expr = cplex.linearNumExpr();
+		        
+		        IloLinearNumExpr exprVeg = cplex.linearNumExpr();
 		        for (int i = 0; i < typesTable; i++) {
-		        		expr.addTerm(numTables[i], tableSize[i]); 
+		        		exprVeg.addTerm(numTablesVeg[i], tableSize[i]); 
 		        }
+		        
+		        IloLinearNumExpr exprNonVeg = cplex.linearNumExpr();
+		        for (int i = 0; i < typesTable; i++) {
+		        		exprNonVeg.addTerm(numTablesNonVeg[i], tableSize[i]); 
+		        }
+		           
 		        for (int i = 0; i < typesTable; i++) {
 		        		for (int j = 0; j < scenarios; j++) {
-		        			cplex.addEq(cplex.diff(tableSurplus[j], tableShortage[j]), cplex.diff(expr, guests[j]));
+		        			for (int k = 0; k < scenarios2; k++) {
+		        				
+		        				double numVegetarians = Math.ceil(guests[j] * vegetarians[k]);
+				 			double numNonVeg = guests[j] - numVegetarians;
+
+		        				cplex.addEq(cplex.diff(tableSurplus[j][k], tableShortage[j][k]), cplex.diff(exprVeg, numVegetarians));	
+		        				cplex.addEq(cplex.diff(tableSurplusN[j][k], tableShortageN[j][k]), cplex.diff(exprNonVeg, numNonVeg));	
+		        			}
 		        		}		        		
 		        }
 	 	
-		 	
+		        // There must be at least one table for either veggies or non veggies
+
+		        IloLinearNumExpr tableOneConstraintVeg = cplex.linearNumExpr();
+		        IloLinearNumExpr tableOneConstraintNonVeg = cplex.linearNumExpr();
+
+		        for (int i = 0; i < typesTable; i++) {
+		        		tableOneConstraintVeg.addTerm(numTablesVeg[i], 1);
+		        		tableOneConstraintNonVeg.addTerm(numTablesVeg[i], 1);
+		        }
+		        
+		        cplex.addGe(tableOneConstraintVeg, 1);
+		        cplex.addGe(tableOneConstraintNonVeg, 1); 
 		 	// Fridge Capacity constraint
 		 	
 		 	IloLinearNumExpr mayo = cplex.linearNumExpr();
@@ -251,55 +306,87 @@ public class Wedding {
 		 		beef.addTerm(amountIngredients[i][21], Prepare[i]);
 		 	}
 		 	
+		 	cplex.addLe(cplex.sum(beef, cplex.sum(mayo,ketchup)), 5); 
 		 	
-		 	cplex.addLe(cplex.sum(beef, cplex.sum(mayo,ketchup)), 1);
 		 	
 	        // Solve
-		 	
+		 	/** Note that extensive output is written to file "results.txt" while minimal output is shown on the console
+		 	 * */
+		    	
 	        if (cplex.solve()) {
 	        	FileWriter results = new FileWriter("weddingResults.txt", false);
 	        		results.write("Solution Status: " + cplex.getStatus() + "\n");
 	        		results.write("Total Cost = " + df.format(cplex.getObjValue()) + "\n");
-	        		results.write("\tDType  \tGScenario  \tVScenario \tTableType \t  NumTables \t TSurplus \tTShortage \t NumPlates \tSurplus \t\tShortage\n");
-	        		
+	        		results.write("\tDType  \tGScenario  \tVScenario \t  NumPlates \t\tSurplus \t\tShortage\n");
+
 	        		System.out.println("Solution Status: " + cplex.getStatus());
 	        		System.out.println();
 	        		System.out.println("Total Cost = " + df.format(cplex.getObjValue()));
 	        		
 	        		System.out.println();
 	        		for (int i= 0; i < nDishes; i++) {
-	        			for (int j = 0; j < typesTable; j++) {
 	        			for (int s = 0; s < scenarios; s++) {
 	        				for (int c = 0; c < scenarios2; c++) {
 	        				
 	        				results.write("\t" + (i+1) + 
 	        					"\t\t\t"	 + (s+1) + 
 	        					"\t\t\t"	 + (c+1) +
-	        					"\t\t\t" + (j+1) + 
-	        					
-	        					"\t\t\t" + cplex.getValue(numTables[j]) +
-	        					"\t\t\t" + cplex.getValue(tableSurplus[s]) +
-	        					"\t\t\t" + cplex.getValue(tableShortage[s]) +
 	        					
 	        					"\t\t\t" + cplex.getValue(Prepare[i]) +        					
-	        					"\t\t\t" + df.format(cplex.getValue(dSurplus[i][s][c])) + 
+	        					"\t\t\t" + df.format(cplex.getValue(surplus[i][s][c])) + 
 	        					"\t\t\t" + df.format(cplex.getValue(shortage[i][s][c])) + "\n");
 	        				}
 	        			}
 	        		}
-	        }
+	        		
+	        		results.write("\n\n Vegetarians \n");
+	        		
+	        		for (int j = 0; j < typesTable; j++)
+	        			for (int s = 0; s < scenarios; s++) {
+	        				for (int c = 0; c < scenarios2; c++) {
+	        					results.write("\t" + (j+1) + 
+	        							"\t\t\t" + df.format(cplex.getValue(numTablesVeg[j])) +
+	    	        					"\t\t\t" + df.format(cplex.getValue(tableSurplus[s][c])) +
+	    	        					"\t\t\t" + df.format(cplex.getValue(tableShortage[s][c])) + "\n");
+	        			}
+	        		}
+	        		
+	        		
+	        		results.write("\n\n Non Vegetarians \n");
+	        		
+	        		for (int j = 0; j < typesTable; j++)
+	        			for (int s = 0; s < scenarios; s++) {
+	        				for (int c = 0; c < scenarios2; c++) {
+	        					
+	        					double numVegetarians = Math.ceil(guests[s] * vegetarians[c]);
+					 			double numNonVeg = guests[s] - numVegetarians;
+	        					results.write("\t" + (j+1) + 
+	        							"\t\t\t" + df.format(cplex.getValue(numTablesNonVeg[j])) +
+	    	        					"\t\t\t" + df.format(cplex.getValue(tableSurplusN[s][c])) +
+	    	        					"\t\t\t" + df.format(cplex.getValue(tableShortageN[s][c]))  +
+	    	        					"\t\t" + numVegetarians + "\t\t" + numNonVeg + "\n");
+	        			}
+	        		}
+	        		
 	        	
 	        		System.out.println("Dishes Types");
-	        		for (int i = 0; i < nDishes; i++) {
-	        			
+	        		for (int i = 0; i < nDishes; i++) {	        			
 	        			System.out.println( "x[" + (i+1) + "]: " + cplex.getValue(Prepare[i]));
 	        		}
 	        		
 	        		System.out.println();
-	        		System.out.println("Table Types");
+	        		System.out.println("Table Types - Veggies");
 	        		for (int j = 0; j < typesTable; j++) {
-	        			System.out.println("t[" + (j+1) +"]: " + cplex.getValue(numTables[j]) );
+	        			System.out.println("t[" + (j+1) +"]Veg: " + cplex.getValue(numTablesVeg[j]) );
 	        		}
+	        		
+	        		System.out.println();
+	        		System.out.println("Table Types - Non Veggies");
+	        		for (int j = 0; j < typesTable; j++) {
+	        			System.out.println("t[" + (j+1) +"]NonVeg: " + cplex.getValue(numTablesNonVeg[j]) );
+	        		}
+
+	        		
 	        		results.close();
 	        }
 	        else {
